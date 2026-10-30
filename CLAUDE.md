@@ -17,17 +17,23 @@ Owner: Samson (DevOps intern, learning). Claude acts as a senior DevOps mentor.
 ## Platform contract
 | Layer | Owner | Provides |
 |---|---|---|
-| AWS foundation | Terraform (this repo) | VPC, public subnet, one EC2 host, Elastic IP, security group, IAM instance role, encrypted gp3 disk, outputs for Ansible |
-| Host config | Ansible | OS setup, k3s install, kubeconfig |
+| AWS foundation | Terraform (this repo) | VPC module, public subnet, one EC2 host, Elastic IP, security group, IAM instance role, encrypted gp3 disk, outputs for Ansible |
+| Host config | Ansible, connecting through SSM (aws_ssm plugin) | OS setup, k3s install, kubeconfig |
 | Cluster + app | FreshTrack repo (Argo CD + Helm) | Traefik ingress, TLS, basic auth, OpenBao + ESO + Reloader, Postgres StatefulSet, expiry CronJob |
 
-- Inbound: only 80 and 443. Limited to Samson's IP until the go-live
+- Inbound: only 80 and 443, from `allowed_ingress_cidr` (set in the
+  git-ignored terraform.tfvars). Limited to Samson's IP until the go-live
   checklist (HTTPS + basic auth working) passes.
 - Never open 22 (SSH) or 6443 (k3s API) to the internet. Admin access is via SSM.
-- Instance type and disk size are variables. IMDSv2 required.
-- IAM role is least-privilege (SSM only unless a decision below changes it).
+- Instance type and disk size are variables: t3.small while learning,
+  m7i-flex.large (8 GB) for k3s + FreshTrack. Root disk 30 GiB. IMDSv2 required.
+- Elastic IP lives in this stack (released on destroy, so no idle cost);
+  the domain name is the stable address.
+- IAM role is least-privilege: SSM, plus read/write on the Ansible transfer
+  bucket only (and SES only if that email option is chosen).
 - Images come from Docker Hub; Terraform holds no registry credentials.
-- State lives in S3 with locking once Day 6 is done.
+- State lives in S3 with native locking. The bucket is built by bootstrap/,
+  which is never destroyed.
 - Host data is temporary: pg_dump before `terraform destroy`.
 - Monitoring of FreshTrack runs on Minikube, not on this platform.
 
@@ -35,11 +41,15 @@ Owner: Samson (DevOps intern, learning). Claude acts as a senior DevOps mentor.
 Anything that replaces the instance (`forces replacement`), changes the
 public IP, opens a port, widens IAM, or changes the region.
 
+## Decided
+- Ansible access: aws_ssm connection plugin (Oct 24). No SSH keys, port 22 stays closed.
+- Instance: m7i-flex.large is free-plan eligible; t3.small is the default for learning sessions (Oct 30).
+- Elastic IP: Option A, inside the platform stack (Oct 30).
+
 ## Open decisions
-- Ansible access: SSH through SSM vs the aws_ssm connection
 - Email: SES SMTP credentials vs Gmail App Password
-- Instance type (free-plan check), AMI (AL2023 vs Ubuntu LTS), domain name
+- AMI (AL2023 vs Ubuntu LTS), domain name
 
 ## Workflow
 Feature branch → fmt / validate / plan (predict the counts first) → PR
-(SonarCloud) → merge → apply.
+(SonarCloud) → merge → apply → verify → destroy.
