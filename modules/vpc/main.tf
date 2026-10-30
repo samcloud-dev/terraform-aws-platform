@@ -1,3 +1,7 @@
+locals {
+  # Nickname used in every Name tag, e.g. "terraform-aws-platform-dev"
+  name_prefix = "${var.project_name}-${var.environment}"
+}
 
 resource "aws_vpc" "main" {
   cidr_block = var.vpc_cidr
@@ -6,7 +10,7 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-vpc"
+    Name = "${local.name_prefix}-vpc"
   }
 }
 
@@ -15,58 +19,64 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+# Public subnet in the FIRST Availability Zone: slice 1 of the VPC
 resource "aws_subnet" "public_a" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.1.0/24"
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 1)
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
-    Name = "public-subnet-a"
+    Name = "${local.name_prefix}-public-a"
     Tier = "public"
   }
 }
 
+# Public subnet in the SECOND Availability Zone: slice 2
 resource "aws_subnet" "public_b" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.2.0/24"
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 2)
   availability_zone = data.aws_availability_zones.available.names[1]
 
   tags = {
-    Name = "public-subnet-b"
+    Name = "${local.name_prefix}-public-b"
     Tier = "public"
   }
 }
 
+# Private subnet in the FIRST Availability Zone: slice 11
 resource "aws_subnet" "private_a" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.11.0/24"
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 11)
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
-    Name = "private-subnet-a"
+    Name = "${local.name_prefix}-private-a"
     Tier = "private"
   }
 }
 
+# Private subnet in the SECOND Availability Zone: slice 12
 resource "aws_subnet" "private_b" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.12.0/24"
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 12)
   availability_zone = data.aws_availability_zones.available.names[1]
 
   tags = {
-    Name = "private-subnet-b"
+    Name = "${local.name_prefix}-private-b"
     Tier = "private"
   }
 }
 
+# The main gate
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "main-igw"
+    Name = "${local.name_prefix}-igw"
   }
 }
 
+# PUBLIC signpost: "outside world -> main gate"
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -76,7 +86,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name = "public-rt"
+    Name = "${local.name_prefix}-public-rt"
   }
 }
 
@@ -90,11 +100,12 @@ resource "aws_route_table_association" "public_b" {
   route_table_id = aws_route_table.public.id
 }
 
+# PRIVATE signpost: no route to the main gate
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "private-rt"
+    Name = "${local.name_prefix}-private-rt"
   }
 }
 
