@@ -39,7 +39,7 @@ resource "aws_vpc_security_group_ingress_rule" "https_in" {
   ip_protocol       = "tcp"
 }
 
-# Outbound rule: the server may go out anywhere (e.g. to download nginx)
+# Outbound rule: the server may go out anywhere 
 resource "aws_vpc_security_group_egress_rule" "all_out" {
   security_group_id = aws_security_group.web.id
   description       = "Allow all outbound"
