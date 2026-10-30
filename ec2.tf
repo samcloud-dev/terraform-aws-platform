@@ -20,13 +20,22 @@ resource "aws_security_group" "web" {
   }
 }
 
-# Inbound rule: anyone may use the front door (port 80, HTTP)
+# Inbound: HTTP, only from the allowed CIDR (redirects to HTTPS later)
 resource "aws_vpc_security_group_ingress_rule" "http_in" {
   security_group_id = aws_security_group.web.id
-  description       = "HTTP from anywhere"
-  cidr_ipv4         = "0.0.0.0/0"
+  description       = "HTTP from allowed CIDR"
+  cidr_ipv4         = var.allowed_ingress_cidr
   from_port         = 80
   to_port           = 80
+  ip_protocol       = "tcp"
+}
+# Inbound: HTTPS, only from the allowed CIDR
+resource "aws_vpc_security_group_ingress_rule" "https_in" {
+  security_group_id = aws_security_group.web.id
+  description       = "HTTPS from allowed CIDR"
+  cidr_ipv4         = var.allowed_ingress_cidr
+  from_port         = 443
+  to_port           = 443
   ip_protocol       = "tcp"
 }
 
@@ -41,7 +50,7 @@ resource "aws_vpc_security_group_egress_rule" "all_out" {
 # The web server (the house)
 resource "aws_instance" "web" {
   ami                         = data.aws_ami.amazon_linux.id
-  instance_type               = "t3.micro"
+  instance_type               = var.instance_type
   subnet_id                   = module.vpc.public_subnet_ids[0]
   vpc_security_group_ids      = [aws_security_group.web.id]
   iam_instance_profile        = aws_iam_instance_profile.web.name
@@ -57,17 +66,9 @@ resource "aws_instance" "web" {
   root_block_device {
     encrypted   = true
     volume_type = "gp3"
+    volume_size = var.root_volume_size
   }
 
-  # The move-in checklist: runs once, on first boot
-  user_data = <<-EOF
-    #!/bin/bash
-    dnf install -y nginx
-    echo "<h1>Hello from Samson's Terraform-built server</h1>" > /usr/share/nginx/html/index.html
-    systemctl enable --now nginx
-  EOF
-
-  user_data_replace_on_change = true
 
   lifecycle {
     ignore_changes = [ami]
@@ -75,5 +76,17 @@ resource "aws_instance" "web" {
 
   tags = {
     Name = "web-server"
+  }
+}
+# The fixed phone number (Elastic IP) for the server
+resource "aws_eip" "web" {
+  domain   = "vpc"               # an Elastic IP for use inside a VPC
+  instance = aws_instance.web.id # attach it to our server
+
+  # The gate (IGW) must exist before a public number can work
+  depends_on = [module.vpc]
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-web-eip"
   }
 }
