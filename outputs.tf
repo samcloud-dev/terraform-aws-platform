@@ -21,3 +21,7 @@ output "web_url" {
 output "web_instance_id" {
   value = aws_instance.web.id
 }
+output "ansible_bucket_name" {
+  description = "S3 bucket Ansible uses for SSM file transfer"
+  value       = aws_s3_bucket.ansible_transfer.bucket
+}
