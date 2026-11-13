@@ -17,7 +17,7 @@ Owner: Samson (DevOps intern, learning). Claude acts as a senior DevOps mentor.
 ## Platform contract
 | Layer | Owner | Provides |
 |---|---|---|
-| AWS foundation | Terraform (this repo) | VPC module, public subnet, one EC2 host, Elastic IP, security group, IAM instance role, encrypted 
+| AWS foundation | Terraform (this repo) | VPC module, public subnet, one EC2 host, Elastic IP, security group, IAM instance role, encrypted gp3 disk, Ansible transfer bucket, outputs for Ansible |
 | Host config | Ansible, connecting through SSM (aws_ssm plugin) | OS setup, k3s install, kubeconfig |
 | Cluster + app | FreshTrack repo (Argo CD + Helm) | Traefik ingress, TLS, basic auth, OpenBao + ESO + Reloader, Postgres StatefulSet, expiry CronJob |
 
@@ -29,7 +29,7 @@ Owner: Samson (DevOps intern, learning). Claude acts as a senior DevOps mentor.
   m7i-flex.large (8 GB) for k3s + FreshTrack. Root disk 30 GiB. IMDSv2 required.
 - Elastic IP lives in this stack (released on destroy, so no idle cost);
   the domain name is the stable address.
-- IAM role is least-privilege
+- IAM role is least-privilege: SSM only. Ansible's aws_ssm plugin passes files
   through the S3 transfer bucket using pre-signed links, so the host needs no
   S3 permission (tested Nov 6). Add SES only if that email option is chosen.
 - Images come from Docker Hub; Terraform holds no registry credentials.
