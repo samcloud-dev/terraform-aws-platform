@@ -1,0 +1,5 @@
+# How Ansible reaches every server: through SSM, no SSH
+ansible_connection: amazon.aws.aws_ssm
+ansible_aws_ssm_region: ca-central-1
+ansible_aws_ssm_bucket_name: "{{ lookup('ansible.builtin.env', 'ANSIBLE_SSM_BUCKET') }}"
+ansible_aws_ssm_bucket_sse_mode: AES256

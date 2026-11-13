@@ -1,0 +1,21 @@
+plugin: amazon.aws.aws_ec2
+regions:
+  - ca-central-1
+
+# Only running servers from THIS project, named web-server
+filters:
+  tag:Project: terraform-aws-platform
+  tag:Name: web-server
+  instance-state-name: running
+
+# Call each server by its instance ID
+hostnames:
+  - instance-id
+
+# Put matching servers in a group called "freshtrack"
+groups:
+  freshtrack: "ec2_tags.Name == 'web-server'"
+
+# Tell the SSM connection which instance to talk to
+compose:
+  ansible_aws_ssm_instance_id: instance_id
