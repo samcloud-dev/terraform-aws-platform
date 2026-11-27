@@ -25,6 +25,8 @@ Owner: Samson (DevOps intern, learning). Claude acts as a senior DevOps mentor.
   git-ignored terraform.tfvars). Limited to Samson's IP until the go-live
   checklist (HTTPS + basic auth working) passes.
 - Never open 22 (SSH) or 6443 (k3s API) to the internet. Admin access is via SSM.
+- kubectl from the laptop goes through an SSM port-forwarding tunnel to 6443.
+  The kubeconfig lives in ~/.kube/freshtrack-k3s.yaml (mode 0600), never in the repo.
 - Instance type and disk size are variables: t3.small while learning,
   m7i-flex.large (8 GB) for k3s + FreshTrack. Root disk 30 GiB. IMDSv2 required.
 - Elastic IP lives in this stack (released on destroy, so no idle cost);
@@ -48,7 +50,7 @@ public IP, opens a port, widens IAM, or changes the region.
 - Elastic IP: Option A, inside the platform stack (Oct 30).
 
 ## Open decisions
-- Email: SES SMTP credentials vs Gmail App Password
+- Email: leaning SES, with the expiry-checker getting AWS access via IRSA (Gmail App Password is the fallback)
 - AMI (AL2023 vs Ubuntu LTS), domain name
 
 ## Workflow
